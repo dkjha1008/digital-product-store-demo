@@ -34,11 +34,11 @@ function getS3Client() {
   if (!globalForS3.s3) {
     const env = getEnv();
     globalForS3.s3 = new S3Client({
-      region: env.AWS_REGION,
-      endpoint: env.AWS_ENDPOINT_URL_S3 || undefined,
+      region: env.S3_REGION,
+      endpoint: env.S3_ENDPOINT || undefined,
       credentials: {
-        accessKeyId: env.AWS_ACCESS_KEY_ID!,
-        secretAccessKey: env.AWS_SECRET_ACCESS_KEY!,
+        accessKeyId: env.S3_ACCESS_KEY_ID!,
+        secretAccessKey: env.S3_SECRET_ACCESS_KEY!,
       },
       forcePathStyle: true,
       requestChecksumCalculation: "WHEN_REQUIRED",

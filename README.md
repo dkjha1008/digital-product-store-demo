@@ -52,7 +52,9 @@ Required variables:
 
 Optional (S3-compatible storage for production):
 
-- `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`
+- `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_REGION`
+
+Use these names on Netlify — `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_REGION` are reserved.
 
 Without S3 config, files are stored locally in `./uploads/`.
 

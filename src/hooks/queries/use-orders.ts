@@ -9,5 +9,7 @@ export function useOrders() {
   return useQuery({
     queryKey: queryKeys.orders.all,
     queryFn: getOrders,
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 }

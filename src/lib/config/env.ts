@@ -16,10 +16,10 @@ const envSchema = z.object({
   APP_URL: z.string().url().default("http://localhost:3000"),
   STRIPE_SECRET_KEY: optionalString,
   STRIPE_WEBHOOK_SECRET: optionalString,
-  AWS_ENDPOINT_URL_S3: optionalUrl,
-  AWS_ACCESS_KEY_ID: optionalString,
-  AWS_SECRET_ACCESS_KEY: optionalString,
-  AWS_REGION: z.string().default("us-east-2"),
+  S3_ENDPOINT: optionalUrl,
+  S3_ACCESS_KEY_ID: optionalString,
+  S3_SECRET_ACCESS_KEY: optionalString,
+  S3_REGION: z.string().default("us-east-2"),
   S3_BUCKET: z.string().default("digital-products"),
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
 });
@@ -45,5 +45,5 @@ export function getEnv(): Env {
 
 export function isObjectStorageConfigured() {
   const env = getEnv();
-  return Boolean(env.AWS_ACCESS_KEY_ID && env.AWS_SECRET_ACCESS_KEY);
+  return Boolean(env.S3_ACCESS_KEY_ID && env.S3_SECRET_ACCESS_KEY);
 }

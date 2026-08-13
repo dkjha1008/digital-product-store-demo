@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { InvalidateOrdersCache } from "@/components/invalidate-orders-cache";
 import { fulfillCheckoutAndGetDownloadLink } from "@/lib/downloads/fulfill-checkout";
 import { routes } from "@/lib/routes";
 import { thankYouQuerySchema } from "@/lib/validators/params";
@@ -33,6 +34,7 @@ export default async function ThankYouPage({ searchParams }: Props) {
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4">
+      <InvalidateOrdersCache />
       <Card className="max-w-md text-center">
         <h1 className="text-xl font-bold mb-2">Thank you for your purchase!</h1>
         <p className="text-[var(--muted)] mb-6">

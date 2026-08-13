@@ -9,7 +9,7 @@ import { requireSession } from "@/lib/auth/session";
 export async function getOrders() {
   const session = await requireSession();
   return withAccountContext(session.accountId, async () => {
-    return getDb()
+    const rows = await getDb()
       .select({
         id: orders.id,
         buyerEmail: orders.buyerEmail,
@@ -23,5 +23,10 @@ export async function getOrders() {
       .innerJoin(products, eq(orders.productId, products.id))
       .where(eq(orders.accountId, session.accountId))
       .orderBy(desc(orders.createdAt));
+
+    return rows.map((row) => ({
+      ...row,
+      createdAt: row.createdAt.toISOString(),
+    }));
   });
 }
