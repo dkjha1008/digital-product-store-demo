@@ -2,7 +2,6 @@ import { config } from "dotenv";
 
 config({ path: ".env.local" });
 
-import { deflateSync } from "node:zlib";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
@@ -27,7 +26,7 @@ type SeedProduct = {
   name: string;
   description: string;
   priceMinor: number;
-  cover: [number, number, number];
+  coverId: number;
 };
 
 type SeedStore = {
@@ -48,61 +47,61 @@ const stores: SeedStore[] = [
         description:
           "A practical guide to outlining, editing, and publishing your first ebook.",
         priceMinor: 1299,
-        cover: [37, 99, 235],
+        coverId: 7597202,
       },
       {
         name: "Short Story Starters Vol. 1",
         description: "Fifty prompts and scene templates for fiction writers.",
         priceMinor: 799,
-        cover: [124, 58, 237],
+        coverId: 8231856,
       },
       {
         name: "Poetry Chapbook Template",
         description: "Print-ready layout notes and a sample chapbook structure.",
         priceMinor: 599,
-        cover: [190, 24, 93],
+        coverId: 10523338,
       },
       {
         name: "Worldbuilding Workbook",
         description: "Maps, cultures, and magic-system worksheets for novelists.",
         priceMinor: 1499,
-        cover: [5, 150, 105],
+        coverId: 14624642,
       },
       {
         name: "Query Letter Kit",
         description: "Agent query templates, examples, and a revision checklist.",
         priceMinor: 899,
-        cover: [217, 119, 6],
+        coverId: 8091016,
       },
       {
         name: "Dialogue Masterclass Notes",
         description: "Techniques for subtext, conflict, and distinctive character voice.",
         priceMinor: 1099,
-        cover: [220, 38, 38],
+        coverId: 8739161,
       },
       {
         name: "Self-Editing Checklist",
         description: "A pass-by-pass editing system for drafts of any length.",
         priceMinor: 499,
-        cover: [8, 145, 178],
+        coverId: 10482835,
       },
       {
         name: "Newsletter Welcome Sequence",
         description: "Seven email templates to grow a reader list after launch.",
         priceMinor: 999,
-        cover: [67, 56, 202],
+        coverId: 12547191,
       },
       {
         name: "Book Launch Timeline",
         description: "A 90-day plan covering cover design, ARCs, and launch week.",
         priceMinor: 1199,
-        cover: [21, 128, 61],
+        coverId: 7222246,
       },
       {
         name: "Character Interview Pack",
         description: "Deep-dive questions to make protagonists and villains feel real.",
         priceMinor: 699,
-        cover: [15, 118, 110],
+        coverId: 13127199,
       },
     ],
   },
@@ -115,61 +114,61 @@ const stores: SeedStore[] = [
         name: "Minimal Invoice Template",
         description: "Clean invoice layout for freelancers, with tax and notes fields.",
         priceMinor: 499,
-        cover: [30, 64, 175],
+        coverId: 9871325,
       },
       {
         name: "Social Media Kit — Neutral",
         description: "Post, story, and banner sizes in a muted color system.",
         priceMinor: 1599,
-        cover: [88, 28, 135],
+        coverId: 10211194,
       },
       {
         name: "Pitch Deck Outline",
         description: "Twelve-slide narrative structure for product and studio pitches.",
         priceMinor: 1299,
-        cover: [159, 18, 57],
+        coverId: 8568099,
       },
       {
         name: "Brand Voice Guide",
         description: "Tone, vocabulary, and example lines for a small creative studio.",
         priceMinor: 899,
-        cover: [180, 83, 9],
+        coverId: 11122762,
       },
       {
         name: "Client Onboarding Checklist",
         description: "Forms, kickoff agenda, and file-handoff steps for new projects.",
         priceMinor: 699,
-        cover: [22, 163, 74],
+        coverId: 8101351,
       },
       {
         name: "Icon Set Starter Pack",
         description: "A 40-icon outline set with usage notes for web and print.",
         priceMinor: 1999,
-        cover: [2, 132, 199],
+        coverId: 12646743,
       },
       {
         name: "Portfolio Case Study Template",
         description: "Write-up structure for process, constraints, and outcomes.",
         priceMinor: 799,
-        cover: [79, 70, 229],
+        coverId: 11135400,
       },
       {
         name: "Color System Worksheet",
         description: "Build a small palette with contrast checks and naming rules.",
         priceMinor: 599,
-        cover: [13, 148, 136],
+        coverId: 12645114,
       },
       {
         name: "Freelance Contract Addendum",
         description: "Plain-language clauses for revisions, licensing, and kill fees.",
         priceMinor: 1099,
-        cover: [185, 28, 28],
+        coverId: 240726,
       },
       {
         name: "Launch Landing Page Copy",
         description: "Headline formulas and section copy for a one-page product site.",
         priceMinor: 999,
-        cover: [101, 116, 205],
+        coverId: 745237,
       },
     ],
   },
@@ -225,62 +224,20 @@ function buildPdf(title: string, description: string) {
   return Buffer.from(pdf);
 }
 
-function crc32(buffer: Buffer) {
-  let crc = 0xffffffff;
-  for (const byte of buffer) {
-    crc ^= byte;
-    for (let i = 0; i < 8; i += 1) {
-      crc = crc & 1 ? (crc >>> 1) ^ 0xedb88320 : crc >>> 1;
-    }
+async function fetchBookCover(coverId: number) {
+  const url = `https://covers.openlibrary.org/b/id/${coverId}-L.jpg?default=false`;
+  const res = await fetch(url, {
+    headers: { "User-Agent": "digital-product-store-seeder/1.0" },
+    redirect: "follow",
+  });
+  if (!res.ok) {
+    throw new Error(`Book cover ${coverId} failed (${res.status})`);
   }
-  return (crc ^ 0xffffffff) >>> 0;
-}
-
-function pngChunk(type: string, data: Buffer) {
-  const length = Buffer.alloc(4);
-  length.writeUInt32BE(data.length);
-  const typeBuf = Buffer.from(type, "ascii");
-  const crcBuf = Buffer.alloc(4);
-  crcBuf.writeUInt32BE(crc32(Buffer.concat([typeBuf, data])));
-  return Buffer.concat([length, typeBuf, data, crcBuf]);
-}
-
-function shade(channel: number, factor: number) {
-  return Math.max(0, Math.min(255, Math.round(channel * factor)));
-}
-
-function buildCoverPng(rgb: [number, number, number], width = 400, height = 560) {
-  const [r, g, b] = rgb;
-  const raw = Buffer.alloc((1 + width * 3) * height);
-
-  for (let y = 0; y < height; y += 1) {
-    const rowStart = y * (1 + width * 3);
-    raw[rowStart] = 0;
-    const band = y < 36 || y > height - 36;
-    const panel = y > 90 && y < height - 110;
-    for (let x = 0; x < width; x += 1) {
-      const i = rowStart + 1 + x * 3;
-      let factor = 1;
-      if (band) factor = 0.55;
-      else if (panel && x > 28 && x < width - 28) factor = 1.18;
-      raw[i] = shade(r, factor);
-      raw[i + 1] = shade(g, factor);
-      raw[i + 2] = shade(b, factor);
-    }
+  const body = Buffer.from(await res.arrayBuffer());
+  if (body.length < 2000) {
+    throw new Error(`Book cover ${coverId} is empty`);
   }
-
-  const ihdr = Buffer.alloc(13);
-  ihdr.writeUInt32BE(width, 0);
-  ihdr.writeUInt32BE(height, 4);
-  ihdr[8] = 8;
-  ihdr[9] = 2;
-
-  return Buffer.concat([
-    Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
-    pngChunk("IHDR", ihdr),
-    pngChunk("IDAT", deflateSync(raw)),
-    pngChunk("IEND", Buffer.alloc(0)),
-  ]);
+  return body;
 }
 
 function slugify(title: string) {
@@ -335,12 +292,12 @@ async function writeProductAssets(
   const pdfId = randomUUID();
   const thumbId = randomUUID();
   const fileKey = `${accountId}/product/${pdfId}.pdf`;
-  const thumbnailKey = `${accountId}/thumbnail/${thumbId}.png`;
+  const thumbnailKey = `${accountId}/thumbnail/${thumbId}.jpg`;
   const pdf = buildPdf(item.name, item.description);
-  const png = buildCoverPng(item.cover);
+  const cover = await fetchBookCover(item.coverId);
 
   await storeBlob(fileKey, pdf, "application/pdf", s3);
-  await storeBlob(thumbnailKey, png, "image/png", s3);
+  await storeBlob(thumbnailKey, cover, "image/jpeg", s3);
 
   return {
     fileKey,
