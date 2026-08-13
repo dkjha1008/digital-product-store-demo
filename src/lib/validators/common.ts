@@ -22,9 +22,8 @@ export const slugSchema = z
 export const currencySchema = z
   .string()
   .trim()
-  .length(3, "Currency must be a 3-letter code")
-  .regex(/^[A-Za-z]{3}$/, "Currency must be a 3-letter code")
-  .transform((value) => value.toUpperCase());
+  .transform((value) => value.toUpperCase())
+  .pipe(z.literal("USD", { errorMap: () => ({ message: "Currency must be USD" }) }));
 
 export const priceMinorSchema = z.preprocess(
   (value) => (typeof value === "number" ? String(value) : (value ?? "")),

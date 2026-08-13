@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { getDb, withAccountContext } from "@/db";
 import { products } from "@/db/schema";
 import { requireSession } from "@/lib/auth/session";
+import { DEFAULT_CURRENCY } from "@/lib/config/constants";
 import { AppError, firstZodError } from "@/lib/errors";
 import { logError } from "@/lib/logger";
 import { uploadFile } from "@/lib/storage";
@@ -78,7 +79,7 @@ export async function createProduct(formData: FormData): Promise<ActionResult> {
         name: parsed.data.name,
         description: parsed.data.description,
         priceMinor: parsed.data.priceMinor,
-        currency: parsed.data.currency,
+        currency: DEFAULT_CURRENCY,
         status: parsed.data.status,
         fileKey,
         fileName: file.name,
@@ -128,7 +129,7 @@ export async function updateProduct(
       name: parsed.data.name,
       description: parsed.data.description,
       priceMinor: parsed.data.priceMinor,
-      currency: parsed.data.currency,
+      currency: DEFAULT_CURRENCY,
       status: parsed.data.status,
       updatedAt: new Date(),
     };

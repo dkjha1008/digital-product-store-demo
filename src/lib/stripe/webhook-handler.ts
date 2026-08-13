@@ -8,6 +8,7 @@ import {
   webhookEvents,
 } from "@/db/schema";
 import {
+  DEFAULT_CURRENCY,
   DOWNLOAD_EXPIRY_HOURS,
   DOWNLOAD_MAX,
 } from "@/lib/config/constants";
@@ -58,8 +59,11 @@ export async function processCheckoutCompleted(session: {
       throw new AppError("Product not found", 404);
     }
 
-    const amountMinor = parsed.data.amount_total ?? product.priceMinor;
-    const currency = (parsed.data.currency ?? product.currency).toUpperCase();
+    const amountMinor =
+      parsed.data.currency === "USD" && parsed.data.amount_total != null
+        ? parsed.data.amount_total
+        : product.priceMinor;
+    const currency = DEFAULT_CURRENCY;
 
     const [order] = await db
       .insert(orders)

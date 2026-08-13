@@ -48,7 +48,7 @@ export function productFormValues(formData: FormData) {
     name: formData.get("name"),
     description: formData.get("description"),
     priceMinor: formData.get("priceMinor"),
-    currency: formData.get("currency") || DEFAULT_CURRENCY,
+    currency: DEFAULT_CURRENCY,
     status: formData.get("status"),
   };
 }

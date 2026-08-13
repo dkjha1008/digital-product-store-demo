@@ -1,7 +1,6 @@
 import { Field } from "@/components/ui/field";
 import type { Product } from "@/db/schema";
 import {
-  DEFAULT_CURRENCY,
   PRODUCT_FILE_ACCEPT,
   PRODUCT_FILE_HINT,
   THUMBNAIL_FILE_ACCEPT,
@@ -37,30 +36,16 @@ export function ProductFields({ product, errors = {} }: Props) {
           aria-invalid={Boolean(errors.description)}
         />
       </Field>
-      <div className="grid grid-cols-2 gap-4">
-        <Field label="Price (cents)" htmlFor="priceMinor" error={errors.priceMinor}>
-          <input
-            id="priceMinor"
-            name="priceMinor"
-            inputMode="numeric"
-            placeholder="1999 = $19.99"
-            defaultValue={product?.priceMinor}
-            aria-invalid={Boolean(errors.priceMinor)}
-          />
-        </Field>
-        <Field label="Currency" htmlFor="currency" error={errors.currency}>
-          <select
-            id="currency"
-            name="currency"
-            defaultValue={product?.currency ?? DEFAULT_CURRENCY}
-            aria-invalid={Boolean(errors.currency)}
-          >
-            <option value="USD">USD</option>
-            <option value="EUR">EUR</option>
-            <option value="GBP">GBP</option>
-          </select>
-        </Field>
-      </div>
+      <Field label="Price (USD cents)" htmlFor="priceMinor" error={errors.priceMinor}>
+        <input
+          id="priceMinor"
+          name="priceMinor"
+          inputMode="numeric"
+          placeholder="1999 = $19.99"
+          defaultValue={product?.priceMinor}
+          aria-invalid={Boolean(errors.priceMinor)}
+        />
+      </Field>
       <Field label="Status" htmlFor="status" error={errors.status}>
         <select
           id="status"

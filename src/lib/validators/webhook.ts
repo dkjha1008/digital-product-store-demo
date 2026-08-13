@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { currencySchema, uuidSchema } from "@/lib/validators/common";
+import { uuidSchema } from "@/lib/validators/common";
 
 const optionalEmail = z.preprocess(
   (value) => (value === "" || value == null ? undefined : value),
@@ -23,7 +23,12 @@ export const checkoutCompletedSchema = z.object({
     account_id: uuidSchema,
   }),
   amount_total: z.number().int().nonnegative().nullish(),
-  currency: currencySchema.nullish(),
+  currency: z
+    .string()
+    .trim()
+    .length(3)
+    .transform((value) => value.toUpperCase())
+    .nullish(),
   payment_status: z.string().max(32).nullish(),
 });
 

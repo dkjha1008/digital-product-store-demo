@@ -1,7 +1,8 @@
-import { getPublishedProduct } from "@/lib/store/queries";
-import { getAppUrl, getStripe } from "@/lib/stripe/client";
+import { DEFAULT_CURRENCY } from "@/lib/config/constants";
 import { AppError } from "@/lib/errors";
 import { routes } from "@/lib/routes";
+import { getPublishedProduct } from "@/lib/store/queries";
+import { getAppUrl, getStripe } from "@/lib/stripe/client";
 
 export async function createCheckoutSession(
   productId: string,
@@ -19,11 +20,13 @@ export async function createCheckoutSession(
 
   const session = await stripe.checkout.sessions.create({
     mode: "payment",
+    locale: "en",
+    adaptive_pricing: { enabled: false },
     customer_email: email,
     line_items: [
       {
         price_data: {
-          currency: product.currency.toLowerCase(),
+          currency: DEFAULT_CURRENCY.toLowerCase(),
           unit_amount: product.priceMinor,
           product_data: {
             name: product.name,
