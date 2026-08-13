@@ -1,8 +1,13 @@
 import { getPublishedProduct } from "@/lib/store/queries";
 import { getAppUrl, getStripe } from "@/lib/stripe/client";
 import { AppError } from "@/lib/errors";
+import { routes } from "@/lib/routes";
 
-export async function createCheckoutSession(productId: string, slug: string) {
+export async function createCheckoutSession(
+  productId: string,
+  slug: string,
+  email: string,
+) {
   const product = await getPublishedProduct(slug, productId);
 
   if (!product) {
@@ -14,6 +19,7 @@ export async function createCheckoutSession(productId: string, slug: string) {
 
   const session = await stripe.checkout.sessions.create({
     mode: "payment",
+    customer_email: email,
     line_items: [
       {
         price_data: {
@@ -31,8 +37,8 @@ export async function createCheckoutSession(productId: string, slug: string) {
       product_id: product.id,
       account_id: product.accountId,
     },
-    success_url: `${appUrl}/thank-you?session_id={CHECKOUT_SESSION_ID}`,
-    cancel_url: `${appUrl}/store/${slug}/products/${product.id}`,
+    success_url: `${appUrl}${routes.thankYou}?session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${appUrl}${routes.checkout(slug, product.id)}`,
   });
 
   return session;

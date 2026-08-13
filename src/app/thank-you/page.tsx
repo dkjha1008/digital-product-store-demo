@@ -2,8 +2,9 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { getDownloadLinkBySession } from "@/lib/downloads/validate-token";
+import { fulfillCheckoutAndGetDownloadLink } from "@/lib/downloads/fulfill-checkout";
 import { routes } from "@/lib/routes";
+import { thankYouQuerySchema } from "@/lib/validators/params";
 
 type Props = {
   searchParams: Promise<{ session_id?: string }>;
@@ -11,8 +12,9 @@ type Props = {
 
 export default async function ThankYouPage({ searchParams }: Props) {
   const { session_id: sessionId } = await searchParams;
+  const parsedSession = thankYouQuerySchema.safeParse({ session_id: sessionId });
 
-  if (!sessionId) {
+  if (!parsedSession.success) {
     return (
       <div className="min-h-screen flex items-center justify-center px-4">
         <Card className="max-w-md text-center">
@@ -25,7 +27,9 @@ export default async function ThankYouPage({ searchParams }: Props) {
     );
   }
 
-  const downloadPath = await getDownloadLinkBySession(sessionId);
+  const downloadPath = await fulfillCheckoutAndGetDownloadLink(
+    parsedSession.data.session_id,
+  );
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4">
@@ -51,7 +55,7 @@ export default async function ThankYouPage({ searchParams }: Props) {
             </p>
             <Button
               variant="secondary"
-              href={`${routes.thankYou}?session_id=${sessionId}`}
+              href={`${routes.thankYou}?session_id=${parsedSession.data.session_id}`}
               className="w-full"
             >
               Refresh

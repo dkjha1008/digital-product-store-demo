@@ -1,3 +1,4 @@
+import { firstZodError } from "@/lib/errors";
 import { handleRouteError, jsonError, jsonOk } from "@/lib/http";
 import { createCheckoutSession } from "@/lib/stripe/create-checkout";
 import { checkoutSchema } from "@/lib/validators/checkout";
@@ -8,12 +9,13 @@ export async function POST(request: Request) {
     const parsed = checkoutSchema.safeParse(body);
 
     if (!parsed.success) {
-      return jsonError("Invalid checkout request", 400);
+      return jsonError(firstZodError(parsed.error), 400);
     }
 
     const session = await createCheckoutSession(
       parsed.data.productId,
       parsed.data.slug,
+      parsed.data.email,
     );
 
     if (!session.url) {

@@ -5,18 +5,25 @@ import { downloadTokens, orders, products } from "@/db/schema";
 import { getEnv } from "@/lib/config/env";
 import { hmacSha256, sha256 } from "@/lib/crypto";
 import { getSignedDownloadUrl } from "@/lib/storage";
+import {
+  downloadTokenSchema,
+  stripeCheckoutSessionIdSchema,
+} from "@/lib/validators/common";
 
 export function generateOrderDownloadToken(orderId: string): string {
   return hmacSha256(getEnv().SESSION_SECRET, orderId);
 }
 
 export async function getDownloadLinkBySession(sessionId: string) {
+  const parsed = stripeCheckoutSessionIdSchema.safeParse(sessionId);
+  if (!parsed.success) return null;
+
   const db = getServiceDb();
 
   const [order] = await db
     .select()
     .from(orders)
-    .where(eq(orders.stripeCheckoutSessionId, sessionId))
+    .where(eq(orders.stripeCheckoutSessionId, parsed.data))
     .limit(1);
 
   if (!order || order.paymentStatus !== "paid") {
@@ -27,8 +34,13 @@ export async function getDownloadLinkBySession(sessionId: string) {
 }
 
 export async function processDownload(rawToken: string) {
+  const parsedToken = downloadTokenSchema.safeParse(rawToken);
+  if (!parsedToken.success) {
+    return { error: "Invalid download link" as const };
+  }
+
   const db = getServiceDb();
-  const tokenHash = sha256(rawToken);
+  const tokenHash = sha256(parsedToken.data);
 
   const [record] = await db
     .select({

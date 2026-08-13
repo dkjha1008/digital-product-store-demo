@@ -10,6 +10,7 @@ export const routes = {
   settings: "/dashboard/settings",
   store: (slug: string) => `/store/${slug}`,
   storeProduct: (slug: string, id: string) => `/store/${slug}/products/${id}`,
+  checkout: (slug: string, id: string) => `/store/${slug}/checkout/${id}`,
   thankYou: "/thank-you",
 } as const;
 

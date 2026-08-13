@@ -14,6 +14,8 @@ import {
 import { sha256 } from "@/lib/crypto";
 import { generateOrderDownloadToken } from "@/lib/downloads/validate-token";
 import { AppError } from "@/lib/errors";
+import { parseInput } from "@/lib/validators/parse";
+import { checkoutCompletedSchema } from "@/lib/validators/webhook";
 
 export async function processCheckoutCompleted(session: {
   id: string;
@@ -25,25 +27,26 @@ export async function processCheckoutCompleted(session: {
   currency?: string | null;
   payment_status?: string | null;
 }) {
-  const productId = session.metadata?.product_id;
-  const accountId = session.metadata?.account_id;
-
-  if (!productId || !accountId) {
-    throw new AppError("Missing metadata on checkout session", 400);
+  const parsed = parseInput(checkoutCompletedSchema, session);
+  if (!parsed.success) {
+    throw new AppError(parsed.error, 400);
   }
+
+  const productId = parsed.data.metadata.product_id;
+  const accountId = parsed.data.metadata.account_id;
 
   return withAccountContext(accountId, async () => {
     const db = getDb();
 
     const buyerEmail =
-      session.customer_email ||
-      session.customer_details?.email ||
+      parsed.data.customer_email ||
+      parsed.data.customer_details?.email ||
       "unknown@checkout.stripe";
 
     const paymentIntentId =
-      typeof session.payment_intent === "string"
-        ? session.payment_intent
-        : session.payment_intent?.id ?? null;
+      typeof parsed.data.payment_intent === "string"
+        ? parsed.data.payment_intent
+        : parsed.data.payment_intent?.id ?? null;
 
     const [product] = await db
       .select()
@@ -55,8 +58,8 @@ export async function processCheckoutCompleted(session: {
       throw new AppError("Product not found", 404);
     }
 
-    const amountMinor = session.amount_total ?? product.priceMinor;
-    const currency = (session.currency ?? product.currency).toUpperCase();
+    const amountMinor = parsed.data.amount_total ?? product.priceMinor;
+    const currency = (parsed.data.currency ?? product.currency).toUpperCase();
 
     const [order] = await db
       .insert(orders)
@@ -66,8 +69,8 @@ export async function processCheckoutCompleted(session: {
         buyerEmail,
         amountMinor,
         currency,
-        paymentStatus: session.payment_status === "paid" ? "paid" : "pending",
-        stripeCheckoutSessionId: session.id,
+        paymentStatus: parsed.data.payment_status === "paid" ? "paid" : "pending",
+        stripeCheckoutSessionId: parsed.data.id,
         stripePaymentIntentId: paymentIntentId,
       })
       .onConflictDoNothing({ target: orders.stripeCheckoutSessionId })
@@ -75,11 +78,29 @@ export async function processCheckoutCompleted(session: {
 
     if (!order) {
       const [existing] = await db
-        .select({ id: orders.id })
+        .select({ id: orders.id, paymentStatus: orders.paymentStatus })
         .from(orders)
-        .where(eq(orders.stripeCheckoutSessionId, session.id))
+        .where(eq(orders.stripeCheckoutSessionId, parsed.data.id))
         .limit(1);
-      return { orderId: existing!.id, alreadyProcessed: true };
+
+      if (!existing) {
+        throw new AppError("Order not found", 404);
+      }
+
+      if (
+        existing.paymentStatus !== "paid" &&
+        parsed.data.payment_status === "paid"
+      ) {
+        await db
+          .update(orders)
+          .set({
+            paymentStatus: "paid",
+            stripePaymentIntentId: paymentIntentId,
+          })
+          .where(eq(orders.id, existing.id));
+      }
+
+      return { orderId: existing.id, alreadyProcessed: true };
     }
 
     const rawToken = generateOrderDownloadToken(order.id);

@@ -1,10 +1,9 @@
 import { z } from "zod";
 
+import { emailSchema, slugSchema, uuidSchema } from "@/lib/validators/common";
+
 export const checkoutSchema = z.object({
-  productId: z.string().uuid("Invalid product"),
-  slug: z
-    .string()
-    .min(2)
-    .max(48)
-    .regex(/^[a-z0-9-]+$/),
+  productId: uuidSchema,
+  slug: slugSchema,
+  email: emailSchema,
 });

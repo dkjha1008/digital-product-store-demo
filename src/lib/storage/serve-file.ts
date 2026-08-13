@@ -6,9 +6,9 @@ import { sanitizeFileName } from "@/lib/crypto";
 import { jsonError } from "@/lib/http";
 import {
   getSignedDownloadUrl,
-  isSafeStorageKey,
   readLocalFile,
 } from "@/lib/storage";
+import { fileQuerySchema } from "@/lib/validators/params";
 
 type Options = {
   asAttachment?: boolean;
@@ -18,12 +18,17 @@ type Options = {
 export async function serveStoredFile(request: Request, options: Options = {}) {
   const { asAttachment = false, redirectIfRemote = false } = options;
   const { searchParams } = new URL(request.url);
-  const key = searchParams.get("key");
-  const name = sanitizeFileName(searchParams.get("name") || "file");
+  const parsed = fileQuerySchema.safeParse({
+    key: searchParams.get("key"),
+    name: searchParams.get("name") ?? undefined,
+  });
 
-  if (!key || !isSafeStorageKey(key)) {
+  if (!parsed.success) {
     return jsonError("Invalid key", 400);
   }
+
+  const key = parsed.data.key;
+  const name = sanitizeFileName(parsed.data.name);
 
   try {
     if (redirectIfRemote && isObjectStorageConfigured()) {

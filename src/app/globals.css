@@ -91,6 +91,12 @@ select:focus {
   margin-top: 0.25rem;
 }
 
+.field-invalid input,
+.field-invalid textarea,
+.field-invalid select {
+  border-color: var(--danger);
+}
+
 .badge {
   display: inline-block;
   padding: 0.125rem 0.5rem;

@@ -6,21 +6,15 @@ import { revalidatePath } from "next/cache";
 import { getDb, withAccountContext } from "@/db";
 import { products } from "@/db/schema";
 import { requireSession } from "@/lib/auth/session";
-import { DEFAULT_CURRENCY } from "@/lib/config/constants";
 import { AppError, firstZodError } from "@/lib/errors";
 import { logError } from "@/lib/logger";
 import { uploadFile } from "@/lib/storage";
 import type { ActionResult } from "@/lib/types";
-import { productSchema } from "@/lib/validators/auth";
+import { productFormValues, productSchema } from "@/lib/validators/auth";
+import { uuidSchema } from "@/lib/validators/common";
 
 function parseProductForm(formData: FormData) {
-  return productSchema.safeParse({
-    name: formData.get("name"),
-    description: formData.get("description") || undefined,
-    priceMinor: formData.get("priceMinor"),
-    currency: formData.get("currency") || DEFAULT_CURRENCY,
-    status: formData.get("status"),
-  });
+  return productSchema.safeParse(productFormValues(formData));
 }
 
 function asFile(value: FormDataEntryValue | null) {
@@ -39,12 +33,15 @@ export async function getProducts() {
 }
 
 export async function getProduct(id: string) {
+  const parsedId = uuidSchema.safeParse(id);
+  if (!parsedId.success) return null;
+
   const session = await requireSession();
   return withAccountContext(session.accountId, async () => {
     const [product] = await getDb()
       .select()
       .from(products)
-      .where(and(eq(products.id, id), eq(products.accountId, session.accountId)))
+      .where(and(eq(products.id, parsedId.data), eq(products.accountId, session.accountId)))
       .limit(1);
     return product ?? null;
   });
@@ -103,6 +100,11 @@ export async function updateProduct(
   id: string,
   formData: FormData,
 ): Promise<ActionResult> {
+  const parsedId = uuidSchema.safeParse(id);
+  if (!parsedId.success) {
+    return { error: "Product not found" };
+  }
+
   const session = await requireSession();
   const parsed = parseProductForm(formData);
 
@@ -150,7 +152,7 @@ export async function updateProduct(
       return getDb()
         .update(products)
         .set(updates)
-        .where(and(eq(products.id, id), eq(products.accountId, session.accountId)))
+        .where(and(eq(products.id, parsedId.data), eq(products.accountId, session.accountId)))
         .returning({ id: products.id });
     });
 
@@ -169,13 +171,18 @@ export async function updateProduct(
 }
 
 export async function deleteProduct(id: string): Promise<ActionResult> {
+  const parsedId = uuidSchema.safeParse(id);
+  if (!parsedId.success) {
+    return { error: "Product not found" };
+  }
+
   const session = await requireSession();
 
   try {
     const deleted = await withAccountContext(session.accountId, async () => {
       return getDb()
         .delete(products)
-        .where(and(eq(products.id, id), eq(products.accountId, session.accountId)))
+        .where(and(eq(products.id, parsedId.data), eq(products.accountId, session.accountId)))
         .returning({ id: products.id });
     });
 

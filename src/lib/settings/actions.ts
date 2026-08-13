@@ -10,7 +10,7 @@ import { firstZodError, isUniqueViolation } from "@/lib/errors";
 import { logError } from "@/lib/logger";
 import type { ActionResult } from "@/lib/types";
 import { RESERVED_SLUGS } from "@/lib/utils/slug";
-import { settingsSchema } from "@/lib/validators/auth";
+import { settingsFormValues, settingsSchema } from "@/lib/validators/auth";
 
 export async function getAccountSettings() {
   const session = await requireSession();
@@ -29,10 +29,7 @@ export async function updateAccountSettings(
 ): Promise<ActionResult> {
   const session = await requireSession();
 
-  const parsed = settingsSchema.safeParse({
-    name: formData.get("name"),
-    slug: formData.get("slug"),
-  });
+  const parsed = settingsSchema.safeParse(settingsFormValues(formData));
 
   if (!parsed.success) {
     return { error: firstZodError(parsed.error) };

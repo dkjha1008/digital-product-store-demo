@@ -15,13 +15,13 @@ import {
   DEFAULT_S3_BUCKET,
   MAX_PRODUCT_FILE_BYTES,
   MAX_THUMBNAIL_BYTES,
-  PRODUCT_FILE_TYPES,
   SIGNED_URL_TTL_SECONDS,
-  THUMBNAIL_FILE_TYPES,
+  isAllowedUpload,
 } from "@/lib/config/constants";
 import { getEnv, isObjectStorageConfigured } from "@/lib/config/env";
 import { sanitizeFileName } from "@/lib/crypto";
 import { AppError } from "@/lib/errors";
+import { storageKeySchema } from "@/lib/validators/common";
 
 const LOCAL_UPLOAD_DIR = path.join(process.cwd(), "uploads");
 
@@ -65,10 +65,7 @@ async function ensureBucket() {
 }
 
 export function isSafeStorageKey(key: string) {
-  if (!key || key.includes("..") || key.startsWith("/") || key.includes("\\")) {
-    return false;
-  }
-  return /^[a-zA-Z0-9._/-]+$/.test(key);
+  return storageKeySchema.safeParse(key).success;
 }
 
 export function assertSafeStorageKey(key: string) {
@@ -90,12 +87,11 @@ function assertUpload(file: File, type: "product" | "thumbnail") {
     );
   }
 
-  const allowed = type === "thumbnail" ? THUMBNAIL_FILE_TYPES : PRODUCT_FILE_TYPES;
-  if (file.type && !allowed.has(file.type)) {
+  if (!isAllowedUpload(file, type)) {
     throw new AppError(
       type === "thumbnail"
         ? "Thumbnail must be a JPEG, PNG, WebP, or GIF"
-        : "Unsupported product file type",
+        : "Unsupported product file type. Use PDF, ZIP, EPUB, DOCX, or TXT.",
     );
   }
 }
