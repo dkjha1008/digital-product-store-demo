@@ -42,8 +42,8 @@ GRANT USAGE ON SCHEMA public TO app_rls;
 GRANT SELECT, UPDATE ON TABLE accounts TO app_rls;
 GRANT SELECT ON TABLE users TO app_rls;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE products TO app_rls;
-GRANT SELECT ON TABLE orders TO app_rls;
-GRANT SELECT ON TABLE download_tokens TO app_rls;
+GRANT SELECT, INSERT ON TABLE orders TO app_rls;
+GRANT SELECT, INSERT ON TABLE download_tokens TO app_rls;
 
 GRANT USAGE ON TYPE product_status TO app_rls;
 GRANT USAGE ON TYPE payment_status TO app_rls;

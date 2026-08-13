@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 
-import { getServiceDb } from "@/db";
+import { getDb, getServiceDb, withAccountContext } from "@/db";
 import {
   downloadTokens,
   orders,
@@ -25,8 +25,6 @@ export async function processCheckoutCompleted(session: {
   currency?: string | null;
   payment_status?: string | null;
 }) {
-  const db = getServiceDb();
-
   const productId = session.metadata?.product_id;
   const accountId = session.metadata?.account_id;
 
@@ -34,70 +32,74 @@ export async function processCheckoutCompleted(session: {
     throw new AppError("Missing metadata on checkout session", 400);
   }
 
-  const buyerEmail =
-    session.customer_email ||
-    session.customer_details?.email ||
-    "unknown@checkout.stripe";
+  return withAccountContext(accountId, async () => {
+    const db = getDb();
 
-  const paymentIntentId =
-    typeof session.payment_intent === "string"
-      ? session.payment_intent
-      : session.payment_intent?.id ?? null;
+    const buyerEmail =
+      session.customer_email ||
+      session.customer_details?.email ||
+      "unknown@checkout.stripe";
 
-  const [product] = await db
-    .select()
-    .from(products)
-    .where(eq(products.id, productId))
-    .limit(1);
+    const paymentIntentId =
+      typeof session.payment_intent === "string"
+        ? session.payment_intent
+        : session.payment_intent?.id ?? null;
 
-  if (!product || product.accountId !== accountId) {
-    throw new AppError("Product not found", 404);
-  }
-
-  const amountMinor = session.amount_total ?? product.priceMinor;
-  const currency = (session.currency ?? product.currency).toUpperCase();
-
-  const [order] = await db
-    .insert(orders)
-    .values({
-      accountId,
-      productId,
-      buyerEmail,
-      amountMinor,
-      currency,
-      paymentStatus: session.payment_status === "paid" ? "paid" : "pending",
-      stripeCheckoutSessionId: session.id,
-      stripePaymentIntentId: paymentIntentId,
-    })
-    .onConflictDoNothing({ target: orders.stripeCheckoutSessionId })
-    .returning();
-
-  if (!order) {
-    const [existing] = await db
-      .select({ id: orders.id })
-      .from(orders)
-      .where(eq(orders.stripeCheckoutSessionId, session.id))
+    const [product] = await db
+      .select()
+      .from(products)
+      .where(eq(products.id, productId))
       .limit(1);
-    return { orderId: existing!.id, alreadyProcessed: true };
-  }
 
-  const rawToken = generateOrderDownloadToken(order.id);
-  const expiresAt = new Date(
-    Date.now() + DOWNLOAD_EXPIRY_HOURS * 60 * 60 * 1000,
-  );
+    if (!product) {
+      throw new AppError("Product not found", 404);
+    }
 
-  await db
-    .insert(downloadTokens)
-    .values({
-      accountId,
-      orderId: order.id,
-      tokenHash: sha256(rawToken),
-      maxDownloads: DOWNLOAD_MAX,
-      expiresAt,
-    })
-    .onConflictDoNothing({ target: downloadTokens.orderId });
+    const amountMinor = session.amount_total ?? product.priceMinor;
+    const currency = (session.currency ?? product.currency).toUpperCase();
 
-  return { orderId: order.id, downloadToken: rawToken, alreadyProcessed: false };
+    const [order] = await db
+      .insert(orders)
+      .values({
+        accountId,
+        productId,
+        buyerEmail,
+        amountMinor,
+        currency,
+        paymentStatus: session.payment_status === "paid" ? "paid" : "pending",
+        stripeCheckoutSessionId: session.id,
+        stripePaymentIntentId: paymentIntentId,
+      })
+      .onConflictDoNothing({ target: orders.stripeCheckoutSessionId })
+      .returning();
+
+    if (!order) {
+      const [existing] = await db
+        .select({ id: orders.id })
+        .from(orders)
+        .where(eq(orders.stripeCheckoutSessionId, session.id))
+        .limit(1);
+      return { orderId: existing!.id, alreadyProcessed: true };
+    }
+
+    const rawToken = generateOrderDownloadToken(order.id);
+    const expiresAt = new Date(
+      Date.now() + DOWNLOAD_EXPIRY_HOURS * 60 * 60 * 1000,
+    );
+
+    await db
+      .insert(downloadTokens)
+      .values({
+        accountId,
+        orderId: order.id,
+        tokenHash: sha256(rawToken),
+        maxDownloads: DOWNLOAD_MAX,
+        expiresAt,
+      })
+      .onConflictDoNothing({ target: downloadTokens.orderId });
+
+    return { orderId: order.id, downloadToken: rawToken, alreadyProcessed: false };
+  });
 }
 
 export async function recordWebhookEvent(
